@@ -3,7 +3,7 @@ from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
 from courses.views import CourseViewSet, EnrollmentViewSet
-from users.views import CustomAuthToken, UserViewSet
+from users.views import CustomAuthToken, LogoutView, UserViewSet
 
 
 router = DefaultRouter()
@@ -14,10 +14,22 @@ router.register("enrollments", EnrollmentViewSet, basename="enrollment")
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path("api/login/", CustomAuthToken.as_view(), name="api_login"),
+    path(
+        "api/login/",
+        CustomAuthToken.as_view(),
+        name="api_login",
+    ),
+    path(
+        "api/logout/",
+        LogoutView.as_view(),
+        name="api_logout",
+    ),
     path("api/", include(router.urls)),
     path(
         "api-auth/",
-        include("rest_framework.urls", namespace="rest_framework"),
+        include(
+            "rest_framework.urls",
+            namespace="rest_framework",
+        ),
     ),
 ]

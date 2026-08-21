@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
   Navigate,
@@ -46,31 +46,31 @@ function Login() {
     return <Navigate to="/dashboard" replace />;
   }
 
-  const handleSubmit = (event) => {
-    event.preventDefault();
-    setError("");
+const handleSubmit = async (event) => {
+  event.preventDefault();
+  setError("");
 
-    if (!username.trim() || !password) {
-      setError(
-        "Please enter your username and password."
-      );
-      return;
-    }
-
-    const result = login(
-      username.trim(),
-      password
+  if (!username.trim() || !password) {
+    setError(
+      "Please enter your username and password."
     );
+    return;
+  }
 
-    if (!result.success) {
-      setError(result.message);
-      return;
-    }
+  const result = await login(
+    username.trim(),
+    password
+  );
 
-    navigate("/dashboard", {
-      replace: true,
-    });
-  };
+  if (!result.success) {
+    setError(result.message);
+    return;
+  }
+
+  navigate("/dashboard", {
+    replace: true,
+  });
+};
 
   return (
     <main className="page-container">
@@ -157,8 +157,8 @@ function StudentDashboard() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
 
     navigate("/login", {
       replace: true,
@@ -172,7 +172,7 @@ function StudentDashboard() {
           <h1>Student Dashboard</h1>
 
           <p>
-            Welcome back, {user.name}.
+            Welcome back, {user.username}.
           </p>
         </div>
 
@@ -265,8 +265,8 @@ function TeacherDashboard() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
 
     navigate("/login", {
       replace: true,
@@ -280,7 +280,7 @@ function TeacherDashboard() {
           <h1>Teacher Dashboard</h1>
 
           <p>
-            Welcome back, {user.name}.
+            Welcome back, {user.username}.
           </p>
         </div>
 
@@ -355,8 +355,8 @@ function AdminDashboard() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
 
     navigate("/login", {
       replace: true,
@@ -370,7 +370,7 @@ function AdminDashboard() {
           <h1>Admin Dashboard</h1>
 
           <p>
-            Welcome back, {user.name}.
+            Welcome back, {user.username}.
           </p>
         </div>
 
@@ -482,35 +482,131 @@ function Dashboard() {
    ================================================== */
 
 function Courses() {
+  const { token } = useAuth();
   const navigate = useNavigate();
 
-  const courses = [
-    {
-      id: 1,
-      title: "Introduction to Python",
-      category: "Programming",
-      description:
-        "Learn the fundamentals of Python programming, including variables, functions and data structures.",
-      teacher: "Teacher User",
-    },
-    {
-      id: 2,
-      title:
-        "Introduction to Web Development",
-      category: "Web Development",
-      description:
-        "Learn HTML, CSS and JavaScript fundamentals for building modern websites.",
-      teacher: "Teacher User",
-    },
-    {
-      id: 3,
-      title: "Introduction to SQL",
-      category: "Database",
-      description:
-        "Learn how databases work and how to retrieve and manage data using SQL.",
-      teacher: "Another Teacher",
-    },
-  ];
+  const [courses, setCourses] = useState([]);
+  const [enrollments, setEnrollments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+
+  const API_BASE_URL = "http://127.0.0.1:8000";
+
+  useEffect(() => {
+    const loadCourses = async () => {
+      try {
+        setLoading(true);
+        setError("");
+
+        const headers = {
+          Authorization: `Token ${token}`,
+        };
+
+        const [coursesResponse, enrollmentsResponse] =
+          await Promise.all([
+            fetch(`${API_BASE_URL}/api/courses/`, {
+              headers,
+            }),
+            fetch(`${API_BASE_URL}/api/enrollments/`, {
+              headers,
+            }),
+          ]);
+
+        if (
+          !coursesResponse.ok ||
+          !enrollmentsResponse.ok
+        ) {
+          throw new Error(
+            "Unable to load course information."
+          );
+        }
+
+        const coursesData =
+          await coursesResponse.json();
+
+        const enrollmentsData =
+          await enrollmentsResponse.json();
+
+        setCourses(coursesData);
+        setEnrollments(enrollmentsData);
+      } catch {
+        setError(
+          "Unable to load courses. Please try again."
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadCourses();
+  }, [token]);
+
+  const enrolledCourseIds = enrollments.map(
+    (enrollment) => enrollment.course
+  );
+
+  const myCourses = courses.filter((course) =>
+    enrolledCourseIds.includes(course.id)
+  );
+
+  const availableCourses = courses.filter(
+    (course) =>
+      !enrolledCourseIds.includes(course.id)
+  );
+
+  const handleEnroll = async (courseId) => {
+    try {
+      setError("");
+      setMessage("");
+
+      const response = await fetch(
+        `${API_BASE_URL}/api/enrollments/`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Token ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            course: courseId,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          "Unable to enrol in this course."
+        );
+      }
+
+      const newEnrollment = await response.json();
+
+      setEnrollments((currentEnrollments) => [
+        ...currentEnrollments,
+        newEnrollment,
+      ]);
+
+      setMessage(
+        "You have successfully enrolled in the course."
+      );
+    } catch {
+      setError(
+        "Unable to enrol in this course. Please try again."
+      );
+    }
+  };
+
+  if (loading) {
+    return (
+      <main className="page-container">
+        <div className="empty-state">
+          <h1>Courses</h1>
+          <p>Loading courses...</p>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="page-container">
@@ -519,40 +615,111 @@ function Courses() {
           <h1>Courses</h1>
 
           <p>
-            Browse available courses.
+            View your courses and browse courses
+            available for enrolment.
           </p>
         </div>
       </section>
 
-      <section className="course-grid">
-        {courses.map((course) => (
-          <article
-            className="course-card"
-            key={course.id}
-          >
-            <div className="course-card-content">
-              <span className="course-category">
-                {course.category}
-              </span>
+      {error && (
+        <div
+          className="alert alert-error"
+          role="alert"
+        >
+          {error}
+        </div>
+      )}
 
-              <h2>{course.title}</h2>
+      {message && (
+        <div
+          className="alert alert-success"
+          role="status"
+        >
+          {message}
+        </div>
+      )}
 
-              <p>{course.description}</p>
+      <section>
+        <h2>My Courses</h2>
 
-              <p className="course-teacher">
-                <strong>Teacher:</strong>{" "}
-                {course.teacher}
-              </p>
-
-              <button
-                type="button"
-                className="button button-primary"
+        {myCourses.length === 0 ? (
+          <div className="empty-state">
+            <p>
+              You are not currently enrolled in any
+              courses.
+            </p>
+          </div>
+        ) : (
+          <div className="course-grid">
+            {myCourses.map((course) => (
+              <article
+                className="course-card"
+                key={course.id}
               >
-                View Course
-              </button>
-            </div>
-          </article>
-        ))}
+                <div className="course-card-content">
+                  <h3>{course.title}</h3>
+
+                  <p>{course.description}</p>
+
+                  <p className="course-teacher">
+                    <strong>Teacher ID:</strong>{" "}
+                    {course.teacher}
+                  </p>
+
+                  <button
+                    type="button"
+                    className="button button-primary"
+                  >
+                    View Course
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section>
+        <h2>Available Courses</h2>
+
+        {availableCourses.length === 0 ? (
+          <div className="empty-state">
+            <p>
+              There are no additional courses
+              available for enrolment.
+            </p>
+          </div>
+        ) : (
+          <div className="course-grid">
+            {availableCourses.map((course) => (
+              <article
+                className="course-card"
+                key={course.id}
+              >
+                <div className="course-card-content">
+                  <h3>{course.title}</h3>
+
+                  <p>{course.description}</p>
+
+                  <p className="course-teacher">
+                    <strong>Teacher ID:</strong>{" "}
+                    {course.teacher}
+                  </p>
+
+                  <button
+                    type="button"
+                    className="button button-primary"
+                    onClick={() =>
+                      handleEnroll(course.id)
+                    }
+                  >
+                    Enrol
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
       </section>
 
       <div className="page-navigation">
@@ -575,49 +742,68 @@ function Courses() {
    ================================================== */
 
 function TeacherCourses() {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const navigate = useNavigate();
 
-  const [courses, setCourses] = useState([
-    {
-      id: 1,
-      title: "Introduction to Python",
-      category: "Programming",
-      description:
-        "Learn the fundamentals of Python programming.",
-      teacher: "Teacher User",
-    },
-    {
-      id: 2,
-      title: "Advanced JavaScript",
-      category: "Web Development",
-      description:
-        "Develop more advanced JavaScript skills.",
-      teacher: "Teacher User",
-    },
-    {
-      id: 3,
-      title: "Database Design",
-      category: "Database",
-      description:
-        "Learn the principles of relational database design.",
-      teacher: "Another Teacher",
-    },
-  ]);
-
+  const [courses, setCourses] = useState([]);
   const [showForm, setShowForm] =
     useState(false);
+  const [editingCourseId, setEditingCourseId] =
+    useState(null);
+  const [loading, setLoading] =
+    useState(true);
+  const [error, setError] = useState("");
+  const [message, setMessage] =
+    useState("");
 
   const [formData, setFormData] = useState({
     title: "",
-    category: "",
     description: "",
   });
 
-  const teacherCourses = courses.filter(
-    (course) =>
-      course.teacher === user.name
-  );
+  const API_BASE_URL =
+    "http://127.0.0.1:8000";
+
+  useEffect(() => {
+    const loadCourses = async () => {
+      try {
+        setLoading(true);
+        setError("");
+
+        const response = await fetch(
+          `${API_BASE_URL}/api/courses/`,
+          {
+            headers: {
+              Authorization: `Token ${token}`,
+            },
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error(
+            "Unable to load courses."
+          );
+        }
+
+        const data = await response.json();
+
+        const teacherCourses = data.filter(
+          (course) =>
+            course.teacher === user.id
+        );
+
+        setCourses(teacherCourses);
+      } catch {
+        setError(
+          "Unable to load your courses. Please try again."
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadCourses();
+  }, [token, user.id]);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -628,32 +814,133 @@ function TeacherCourses() {
     }));
   };
 
-  const handleCreate = (event) => {
-    event.preventDefault();
-
-    const newCourse = {
-      id: Date.now(),
-      title: formData.title,
-      category: formData.category,
-      description: formData.description,
-      teacher: user.name,
-    };
-
-    setCourses((currentCourses) => [
-      ...currentCourses,
-      newCourse,
-    ]);
-
+  const resetForm = () => {
     setFormData({
       title: "",
-      category: "",
       description: "",
     });
 
+    setEditingCourseId(null);
     setShowForm(false);
   };
 
-  const handleDelete = (courseId) => {
+  const handleCreate = async (event) => {
+    event.preventDefault();
+
+    try {
+      setError("");
+      setMessage("");
+
+      const response = await fetch(
+        `${API_BASE_URL}/api/courses/`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Token ${token}`,
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            title: formData.title,
+            description:
+              formData.description,
+            teacher: user.id,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          "Unable to create course."
+        );
+      }
+
+      const newCourse =
+        await response.json();
+
+      setCourses((currentCourses) => [
+        ...currentCourses,
+        newCourse,
+      ]);
+
+      resetForm();
+
+      setMessage(
+        "Course created successfully."
+      );
+    } catch {
+      setError(
+        "Unable to create the course. Please try again."
+      );
+    }
+  };
+
+  const handleEdit = (course) => {
+    setFormData({
+      title: course.title,
+      description: course.description,
+    });
+
+    setEditingCourseId(course.id);
+    setShowForm(true);
+    setError("");
+    setMessage("");
+  };
+
+  const handleUpdate = async (event) => {
+    event.preventDefault();
+
+    try {
+      setError("");
+      setMessage("");
+
+      const response = await fetch(
+        `${API_BASE_URL}/api/courses/${editingCourseId}/`,
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `Token ${token}`,
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            title: formData.title,
+            description:
+              formData.description,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          "Unable to update course."
+        );
+      }
+
+      const updatedCourse =
+        await response.json();
+
+      setCourses((currentCourses) =>
+        currentCourses.map((course) =>
+          course.id === updatedCourse.id
+            ? updatedCourse
+            : course
+        )
+      );
+
+      resetForm();
+
+      setMessage(
+        "Course updated successfully."
+      );
+    } catch {
+      setError(
+        "Unable to update the course. Please try again."
+      );
+    }
+  };
+
+  const handleDelete = async (courseId) => {
     const confirmed = window.confirm(
       "Are you sure you want to delete this course?"
     );
@@ -662,12 +949,62 @@ function TeacherCourses() {
       return;
     }
 
-    setCourses((currentCourses) =>
-      currentCourses.filter(
-        (course) => course.id !== courseId
-      )
-    );
+    try {
+      setError("");
+      setMessage("");
+
+      const response = await fetch(
+        `${API_BASE_URL}/api/courses/${courseId}/`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Token ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          "Unable to delete course."
+        );
+      }
+
+      setCourses((currentCourses) =>
+        currentCourses.filter(
+          (course) =>
+            course.id !== courseId
+        )
+      );
+
+      if (editingCourseId === courseId) {
+        resetForm();
+      }
+
+      setMessage(
+        "Course deleted successfully."
+      );
+    } catch {
+      setError(
+        "Unable to delete the course. Please try again."
+      );
+    }
   };
+
+  const handleCancelForm = () => {
+    resetForm();
+    setError("");
+  };
+
+  if (loading) {
+    return (
+      <main className="page-container">
+        <div className="empty-state">
+          <h1>Course Details</h1>
+          <p>Loading courses...</p>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="page-container">
@@ -681,13 +1018,42 @@ function TeacherCourses() {
         </div>
       </section>
 
+      {error && (
+        <div
+          className="alert alert-error"
+          role="alert"
+        >
+          {error}
+        </div>
+      )}
+
+      {message && (
+        <div
+          className="alert alert-success"
+          role="status"
+        >
+          {message}
+        </div>
+      )}
+
       <div className="create-course-container">
         <button
           type="button"
           className="button button-primary"
-          onClick={() =>
-            setShowForm(!showForm)
-          }
+          onClick={() => {
+            if (showForm) {
+              handleCancelForm();
+            } else {
+              setShowForm(true);
+              setEditingCourseId(null);
+              setFormData({
+                title: "",
+                description: "",
+              });
+              setError("");
+              setMessage("");
+            }
+          }}
         >
           {showForm
             ? "Cancel"
@@ -697,9 +1063,19 @@ function TeacherCourses() {
 
       {showForm && (
         <section className="form-card">
-          <h2>Create New Course</h2>
+          <h2>
+            {editingCourseId
+              ? "Edit Course"
+              : "Create New Course"}
+          </h2>
 
-          <form onSubmit={handleCreate}>
+          <form
+            onSubmit={
+              editingCourseId
+                ? handleUpdate
+                : handleCreate
+            }
+          >
             <div className="form-group">
               <label htmlFor="course-title">
                 Course Name
@@ -710,21 +1086,6 @@ function TeacherCourses() {
                 id="course-title"
                 name="title"
                 value={formData.title}
-                onChange={handleChange}
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="course-category">
-                Category
-              </label>
-
-              <input
-                type="text"
-                id="course-category"
-                name="category"
-                value={formData.category}
                 onChange={handleChange}
                 required
               />
@@ -749,14 +1110,16 @@ function TeacherCourses() {
               type="submit"
               className="button button-primary"
             >
-              Create Course
+              {editingCourseId
+                ? "Save Changes"
+                : "Create Course"}
             </button>
           </form>
         </section>
       )}
 
       <section className="course-list">
-        {teacherCourses.length === 0 ? (
+        {courses.length === 0 ? (
           <div className="empty-state">
             <h2>No Courses</h2>
 
@@ -766,22 +1129,20 @@ function TeacherCourses() {
             </p>
           </div>
         ) : (
-          teacherCourses.map((course) => (
+          courses.map((course) => (
             <article
               className="management-card"
               key={course.id}
             >
               <div className="management-card-content">
-                <span className="course-category">
-                  {course.category}
-                </span>
-
                 <h2>{course.title}</h2>
 
                 <p>{course.description}</p>
 
                 <p>
-                  <strong>Teacher:</strong>{" "}
+                  <strong>
+                    Teacher ID:
+                  </strong>{" "}
                   {course.teacher}
                 </p>
               </div>
@@ -790,6 +1151,9 @@ function TeacherCourses() {
                 <button
                   type="button"
                   className="button button-secondary"
+                  onClick={() =>
+                    handleEdit(course)
+                  }
                 >
                   Edit
                 </button>
@@ -829,52 +1193,321 @@ function TeacherCourses() {
    ================================================== */
 
 function AdminCourses() {
+  const { token } = useAuth();
   const navigate = useNavigate();
 
+  const [courses, setCourses] = useState([]);
+  const [teachers, setTeachers] = useState([]);
   const [searchTerm, setSearchTerm] =
     useState("");
+  const [showForm, setShowForm] =
+    useState(false);
+  const [editingCourseId, setEditingCourseId] =
+    useState(null);
+  const [loading, setLoading] =
+    useState(true);
+  const [error, setError] = useState("");
+  const [message, setMessage] =
+    useState("");
 
-  const courses = [
-    {
-      id: 1,
-      title: "Introduction to Python",
-      category: "Programming",
-      teacher: "Teacher User",
-      description:
-        "Learn the fundamentals of Python programming.",
-    },
-    {
-      id: 2,
-      title: "Advanced JavaScript",
-      category: "Web Development",
-      teacher: "Teacher User",
-      description:
-        "Develop more advanced JavaScript skills.",
-    },
-    {
-      id: 3,
-      title: "Database Design",
-      category: "Database",
-      teacher: "Another Teacher",
-      description:
-        "Learn the principles of relational database design.",
-    },
-  ];
+  const [formData, setFormData] = useState({
+    title: "",
+    description: "",
+    teacher: "",
+  });
+
+  const API_BASE_URL =
+    "http://127.0.0.1:8000";
+
+  useEffect(() => {
+    const loadAdminData = async () => {
+      try {
+        setLoading(true);
+        setError("");
+
+        const headers = {
+          Authorization: `Token ${token}`,
+        };
+
+        const [coursesResponse, usersResponse] =
+          await Promise.all([
+            fetch(`${API_BASE_URL}/api/courses/`, {
+              headers,
+            }),
+            fetch(`${API_BASE_URL}/api/users/`, {
+              headers,
+            }),
+          ]);
+
+        if (
+          !coursesResponse.ok ||
+          !usersResponse.ok
+        ) {
+          throw new Error(
+            "Unable to load course information."
+          );
+        }
+
+        const coursesData =
+          await coursesResponse.json();
+
+        const usersData =
+          await usersResponse.json();
+
+        const teacherUsers = usersData.filter(
+          (currentUser) =>
+            currentUser.role === "TEACHER"
+        );
+
+        setCourses(coursesData);
+        setTeachers(teacherUsers);
+      } catch {
+        setError(
+          "Unable to load courses. Please try again."
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadAdminData();
+  }, [token]);
+
+  const handleChange = (event) => {
+    const { name, value } = event.target;
+
+    setFormData((currentData) => ({
+      ...currentData,
+      [name]: value,
+    }));
+  };
+
+  const resetForm = () => {
+    setFormData({
+      title: "",
+      description: "",
+      teacher: "",
+    });
+
+    setEditingCourseId(null);
+    setShowForm(false);
+  };
+
+  const handleCreate = async (event) => {
+    event.preventDefault();
+
+    try {
+      setError("");
+      setMessage("");
+
+      const response = await fetch(
+        `${API_BASE_URL}/api/courses/`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Token ${token}`,
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            title: formData.title,
+            description:
+              formData.description,
+            teacher: Number(formData.teacher),
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          "Unable to create course."
+        );
+      }
+
+      const newCourse =
+        await response.json();
+
+      setCourses((currentCourses) => [
+        ...currentCourses,
+        newCourse,
+      ]);
+
+      resetForm();
+
+      setMessage(
+        "Course created successfully."
+      );
+    } catch {
+      setError(
+        "Unable to create the course. Please try again."
+      );
+    }
+  };
+
+  const handleEdit = (course) => {
+    setFormData({
+      title: course.title,
+      description: course.description,
+      teacher: String(course.teacher),
+    });
+
+    setEditingCourseId(course.id);
+    setShowForm(true);
+    setError("");
+    setMessage("");
+  };
+
+  const handleUpdate = async (event) => {
+    event.preventDefault();
+
+    try {
+      setError("");
+      setMessage("");
+
+      const response = await fetch(
+        `${API_BASE_URL}/api/courses/${editingCourseId}/`,
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `Token ${token}`,
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            title: formData.title,
+            description:
+              formData.description,
+            teacher: Number(formData.teacher),
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          "Unable to update course."
+        );
+      }
+
+      const updatedCourse =
+        await response.json();
+
+      setCourses((currentCourses) =>
+        currentCourses.map((course) =>
+          course.id === updatedCourse.id
+            ? updatedCourse
+            : course
+        )
+      );
+
+      resetForm();
+
+      setMessage(
+        "Course updated successfully."
+      );
+    } catch {
+      setError(
+        "Unable to update the course. Please try again."
+      );
+    }
+  };
+
+  const handleDelete = async (courseId) => {
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this course?"
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setError("");
+      setMessage("");
+
+      const response = await fetch(
+        `${API_BASE_URL}/api/courses/${courseId}/`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Token ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          "Unable to delete course."
+        );
+      }
+
+      setCourses((currentCourses) =>
+        currentCourses.filter(
+          (course) =>
+            course.id !== courseId
+        )
+      );
+
+      if (editingCourseId === courseId) {
+        resetForm();
+      }
+
+      setMessage(
+        "Course deleted successfully."
+      );
+    } catch {
+      setError(
+        "Unable to delete the course. Please try again."
+      );
+    }
+  };
+
+  const handleCancelForm = () => {
+    resetForm();
+    setError("");
+  };
+
+  const getTeacherName = (teacherId) => {
+    const teacher = teachers.find(
+      (currentTeacher) =>
+        currentTeacher.id === teacherId
+    );
+
+    return teacher
+      ? teacher.username
+      : `Teacher ID ${teacherId}`;
+  };
 
   const search = searchTerm.toLowerCase();
 
   const filteredCourses = courses.filter(
-    (course) =>
-      course.title
-        .toLowerCase()
-        .includes(search) ||
-      course.category
-        .toLowerCase()
-        .includes(search) ||
-      course.teacher
-        .toLowerCase()
-        .includes(search)
+    (course) => {
+      const teacherName =
+        getTeacherName(course.teacher);
+
+      return (
+        course.title
+          .toLowerCase()
+          .includes(search) ||
+        course.description
+          .toLowerCase()
+          .includes(search) ||
+        teacherName
+          .toLowerCase()
+          .includes(search)
+      );
+    }
   );
+
+  if (loading) {
+    return (
+      <main className="page-container">
+        <div className="empty-state">
+          <h1>Manage Courses</h1>
+          <p>Loading courses...</p>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="page-container">
@@ -887,6 +1520,134 @@ function AdminCourses() {
           </p>
         </div>
       </section>
+
+      {error && (
+        <div
+          className="alert alert-error"
+          role="alert"
+        >
+          {error}
+        </div>
+      )}
+
+      {message && (
+        <div
+          className="alert alert-success"
+          role="status"
+        >
+          {message}
+        </div>
+      )}
+
+      <div className="create-course-container">
+        <button
+          type="button"
+          className="button button-primary"
+          onClick={() => {
+            if (showForm) {
+              handleCancelForm();
+            } else {
+              setShowForm(true);
+              setEditingCourseId(null);
+              setFormData({
+                title: "",
+                description: "",
+                teacher: "",
+              });
+              setError("");
+              setMessage("");
+            }
+          }}
+        >
+          {showForm
+            ? "Cancel"
+            : "Create New Course"}
+        </button>
+      </div>
+
+      {showForm && (
+        <section className="form-card">
+          <h2>
+            {editingCourseId
+              ? "Edit Course"
+              : "Create New Course"}
+          </h2>
+
+          <form
+            onSubmit={
+              editingCourseId
+                ? handleUpdate
+                : handleCreate
+            }
+          >
+            <div className="form-group">
+              <label htmlFor="admin-course-title">
+                Course Name
+              </label>
+
+              <input
+                type="text"
+                id="admin-course-title"
+                name="title"
+                value={formData.title}
+                onChange={handleChange}
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="admin-course-description">
+                Description
+              </label>
+
+              <textarea
+                id="admin-course-description"
+                name="description"
+                value={formData.description}
+                onChange={handleChange}
+                rows="5"
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="admin-course-teacher">
+                Teacher
+              </label>
+
+              <select
+                id="admin-course-teacher"
+                name="teacher"
+                value={formData.teacher}
+                onChange={handleChange}
+                required
+              >
+                <option value="">
+                  Select a teacher
+                </option>
+
+                {teachers.map((teacher) => (
+                  <option
+                    key={teacher.id}
+                    value={teacher.id}
+                  >
+                    {teacher.username}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <button
+              type="submit"
+              className="button button-primary"
+            >
+              {editingCourseId
+                ? "Save Changes"
+                : "Create Course"}
+            </button>
+          </form>
+        </section>
+      )}
 
       <section className="search-section">
         <label htmlFor="course-search">
@@ -902,7 +1663,7 @@ function AdminCourses() {
               event.target.value
             );
           }}
-          placeholder="Search by course, category or teacher..."
+          placeholder="Search by course or teacher..."
         />
       </section>
 
@@ -922,17 +1683,15 @@ function AdminCourses() {
               key={course.id}
             >
               <div className="management-card-content">
-                <span className="course-category">
-                  {course.category}
-                </span>
-
                 <h2>{course.title}</h2>
 
                 <p>{course.description}</p>
 
                 <p>
                   <strong>Teacher:</strong>{" "}
-                  {course.teacher}
+                  {getTeacherName(
+                    course.teacher
+                  )}
                 </p>
               </div>
 
@@ -940,6 +1699,9 @@ function AdminCourses() {
                 <button
                   type="button"
                   className="button button-secondary"
+                  onClick={() =>
+                    handleEdit(course)
+                  }
                 >
                   Edit
                 </button>
@@ -947,6 +1709,9 @@ function AdminCourses() {
                 <button
                   type="button"
                   className="button button-danger"
+                  onClick={() =>
+                    handleDelete(course.id)
+                  }
                 >
                   Delete
                 </button>
@@ -976,54 +1741,142 @@ function AdminCourses() {
    ================================================== */
 
 function AdminUsers() {
+  const { user, token } = useAuth();
   const navigate = useNavigate();
 
   const [searchTerm, setSearchTerm] =
     useState("");
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] =
+    useState(true);
+  const [error, setError] = useState("");
+  const [message, setMessage] =
+    useState("");
 
-  const [users, setUsers] = useState([
-    {
-      id: 1,
-      username: "student",
-      email: "student@example.com",
-      role: "student",
-    },
-    {
-      id: 2,
-      username: "teacher",
-      email: "teacher@example.com",
-      role: "teacher",
-    },
-    {
-      id: 3,
-      username: "admin",
-      email: "admin@example.com",
-      role: "admin",
-    },
-  ]);
+  const API_BASE_URL =
+    "http://127.0.0.1:8000";
+
+  useEffect(() => {
+    const loadUsers = async () => {
+      try {
+        setLoading(true);
+        setError("");
+
+        const response = await fetch(
+          `${API_BASE_URL}/api/users/`,
+          {
+            headers: {
+              Authorization: `Token ${token}`,
+            },
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error(
+            "Unable to load users."
+          );
+        }
+
+        const data = await response.json();
+
+        setUsers(
+          data.map((currentUser) => ({
+            ...currentUser,
+            role: currentUser.role.toLowerCase(),
+          }))
+        );
+      } catch {
+        setError(
+          "Unable to load users. Please try again."
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadUsers();
+  }, [token]);
 
   const handleUserChange = (
     id,
     field,
     value
   ) => {
-    setUsers((currentUsers) => {
-      return currentUsers.map(
-        (currentUser) => {
-          if (currentUser.id === id) {
-            return {
+    setUsers((currentUsers) =>
+      currentUsers.map((currentUser) =>
+        currentUser.id === id
+          ? {
               ...currentUser,
               [field]: value,
-            };
-          }
-
-          return currentUser;
-        }
-      );
-    });
+            }
+          : currentUser
+      )
+    );
   };
 
-  const handleDelete = (id) => {
+  const handleSave = async (currentUser) => {
+    try {
+      setError("");
+      setMessage("");
+
+      const response = await fetch(
+        `${API_BASE_URL}/api/users/${currentUser.id}/`,
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `Token ${token}`,
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            username: currentUser.username,
+            email: currentUser.email,
+            role: currentUser.role.toUpperCase(),
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          "Unable to update user."
+        );
+      }
+
+      const updatedUser =
+        await response.json();
+
+      setUsers((currentUsers) =>
+        currentUsers.map((existingUser) =>
+          existingUser.id === updatedUser.id
+            ? {
+                ...updatedUser,
+                role:
+                  updatedUser.role.toLowerCase(),
+              }
+            : existingUser
+        )
+      );
+
+      setMessage(
+        "User changes saved successfully."
+      );
+    } catch {
+      setError(
+        "Unable to save user changes. Please try again."
+      );
+    }
+  };
+
+  const handleDelete = async (
+    currentUser
+  ) => {
+    if (currentUser.id === user.id) {
+      setError(
+        "You cannot delete the account you are currently signed in with."
+      );
+      return;
+    }
+
     const confirmed = window.confirm(
       "Are you sure you want to delete this user account?"
     );
@@ -1032,31 +1885,68 @@ function AdminUsers() {
       return;
     }
 
-    setUsers((currentUsers) => {
-      return currentUsers.filter(
-        (currentUser) =>
-          currentUser.id !== id
+    try {
+      setError("");
+      setMessage("");
+
+      const response = await fetch(
+        `${API_BASE_URL}/api/users/${currentUser.id}/`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Token ${token}`,
+          },
+        }
       );
-    });
+
+      if (!response.ok) {
+        throw new Error(
+          "Unable to delete user."
+        );
+      }
+
+      setUsers((currentUsers) =>
+        currentUsers.filter(
+          (existingUser) =>
+            existingUser.id !== currentUser.id
+        )
+      );
+
+      setMessage(
+        "User deleted successfully."
+      );
+    } catch {
+      setError(
+        "Unable to delete the user. Please try again."
+      );
+    }
   };
 
   const search = searchTerm.toLowerCase();
 
   const filteredUsers = users.filter(
-    (currentUser) => {
-      return (
-        currentUser.username
-          .toLowerCase()
-          .includes(search) ||
-        currentUser.email
-          .toLowerCase()
-          .includes(search) ||
-        currentUser.role
-          .toLowerCase()
-          .includes(search)
-      );
-    }
+    (currentUser) =>
+      currentUser.username
+        .toLowerCase()
+        .includes(search) ||
+      currentUser.email
+        .toLowerCase()
+        .includes(search) ||
+      currentUser.role
+        .toLowerCase()
+        .includes(search)
   );
+
+  if (loading) {
+    return (
+      <main className="page-container">
+        <div className="empty-state">
+          <h1>Manage Users</h1>
+          <p>Loading users...</p>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="page-container">
@@ -1069,6 +1959,24 @@ function AdminUsers() {
           </p>
         </div>
       </section>
+
+      {error && (
+        <div
+          className="alert alert-error"
+          role="alert"
+        >
+          {error}
+        </div>
+      )}
+
+      {message && (
+        <div
+          className="alert alert-success"
+          role="status"
+        >
+          {message}
+        </div>
+      )}
 
       <section className="search-section">
         <label htmlFor="user-search">
@@ -1208,11 +2116,9 @@ function AdminUsers() {
                   <button
                     type="button"
                     className="button button-primary"
-                    onClick={() => {
-                      window.alert(
-                        "User changes saved successfully."
-                      );
-                    }}
+                    onClick={() =>
+                      handleSave(currentUser)
+                    }
                   >
                     Save Changes
                   </button>
@@ -1220,11 +2126,9 @@ function AdminUsers() {
                   <button
                     type="button"
                     className="button button-danger"
-                    onClick={() => {
-                      handleDelete(
-                        currentUser.id
-                      );
-                    }}
+                    onClick={() =>
+                      handleDelete(currentUser)
+                    }
                   >
                     Delete User
                   </button>

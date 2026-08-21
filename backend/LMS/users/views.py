@@ -2,11 +2,12 @@ from rest_framework import viewsets
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.views import APIView
 
 from .models import User
 from .permissions import IsLMSAdmin
 from .serializers import UserSerializer
-
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
@@ -36,5 +37,18 @@ class CustomAuthToken(ObtainAuthToken):
                     "email": user.email,
                     "role": user.role,
                 },
+            }
+        )
+
+class LogoutView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        if request.auth:
+            request.auth.delete()
+
+        return Response(
+            {
+                "message": "Logged out successfully."
             }
         )

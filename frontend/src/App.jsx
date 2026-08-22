@@ -230,28 +230,12 @@ function StudentDashboard() {
             type="button"
             className="button button-secondary"
             onClick={() =>
-              navigate("/courses")
+              navigate("/available-courses")
             }
           >
             Browse Courses
           </button>
-        </article>
-
-        <article className="dashboard-card">
-          <h2>Profile</h2>
-
-          <p>
-            View and manage your account
-            information.
-          </p>
-
-          <button
-            type="button"
-            className="button button-secondary"
-          >
-            View Profile
-          </button>
-        </article>
+        </article>        
       </section>
     </main>
   );
@@ -306,7 +290,7 @@ function TeacherDashboard() {
         </p>
       </section>
 
-      <section className="dashboard-grid dashboard-grid-centered">
+      <section className="dashboard-grid">
         <article className="dashboard-card">
           <h2>Course Details</h2>
 
@@ -325,23 +309,7 @@ function TeacherDashboard() {
           >
             Course Details
           </button>
-        </article>
-
-        <article className="dashboard-card">
-          <h2>Profile</h2>
-
-          <p>
-            View and manage your account
-            information.
-          </p>
-
-          <button
-            type="button"
-            className="button button-secondary"
-          >
-            View Profile
-          </button>
-        </article>
+        </article>      
       </section>
     </main>
   );
@@ -434,22 +402,6 @@ function AdminDashboard() {
             Manage Courses
           </button>
         </article>
-
-        <article className="dashboard-card">
-          <h2>Profile</h2>
-
-          <p>
-            View and manage your account
-            information.
-          </p>
-
-          <button
-            type="button"
-            className="button button-secondary"
-          >
-            View Profile
-          </button>
-        </article>
       </section>
     </main>
   );
@@ -481,7 +433,158 @@ function Dashboard() {
    Student Courses
    ================================================== */
 
-function Courses() {
+function MyCourses() {
+  const { token } = useAuth();
+  const navigate = useNavigate();
+
+  const [courses, setCourses] = useState([]);
+  const [enrollments, setEnrollments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const API_BASE_URL = "http://127.0.0.1:8000";
+
+  useEffect(() => {
+    const loadCourses = async () => {
+      try {
+        setLoading(true);
+        setError("");
+
+        const headers = {
+          Authorization: `Token ${token}`,
+        };
+
+        const [coursesResponse, enrollmentsResponse] =
+          await Promise.all([
+            fetch(`${API_BASE_URL}/api/courses/`, {
+              headers,
+            }),
+            fetch(`${API_BASE_URL}/api/enrollments/`, {
+              headers,
+            }),
+          ]);
+
+        if (
+          !coursesResponse.ok ||
+          !enrollmentsResponse.ok
+        ) {
+          throw new Error(
+            "Unable to load course information."
+          );
+        }
+
+        const coursesData =
+          await coursesResponse.json();
+
+        const enrollmentsData =
+          await enrollmentsResponse.json();
+
+        setCourses(coursesData);
+        setEnrollments(enrollmentsData);
+      } catch {
+        setError(
+          "Unable to load your courses. Please try again."
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadCourses();
+  }, [token]);
+
+  const enrolledCourseIds = enrollments.map(
+    (enrollment) => enrollment.course
+  );
+
+  const myCourses = courses.filter((course) =>
+    enrolledCourseIds.includes(course.id)
+  );
+
+  if (loading) {
+    return (
+      <main className="page-container">
+        <div className="empty-state">
+          <h1>My Courses</h1>
+          <p>Loading courses...</p>
+        </div>
+      </main>
+    );
+  }
+
+  return (
+    <main className="page-container">
+      <section className="page-header">
+        <div>
+          <h1>My Courses</h1>
+
+          <p>
+            View the courses you are currently
+            enrolled in.
+          </p>
+        </div>
+      </section>
+
+      {error && (
+        <div
+          className="alert alert-error"
+          role="alert"
+        >
+          {error}
+        </div>
+      )}
+
+      <section>
+        {myCourses.length === 0 ? (
+          <div className="empty-state">
+            <p>
+              You are not currently enrolled in any
+              courses.
+            </p>
+          </div>
+        ) : (
+          <div className="course-grid">
+            {myCourses.map((course) => (
+              <article
+                className="course-card"
+                key={course.id}
+              >
+                <div className="course-card-content">
+                  <h2>{course.title}</h2>
+
+                  <p>{course.description}</p>
+
+                  <p className="course-teacher">
+                    <strong>Teacher:</strong>{" "}
+                    {course.teacher_name}
+                  </p>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <div className="page-navigation">
+        <button
+          type="button"
+          className="button button-secondary"
+          onClick={() =>
+            navigate("/dashboard")
+          }
+        >
+          Back to Dashboard
+        </button>
+      </div>
+    </main>
+  );
+}
+
+/* ==================================================
+   Student Available Courses
+   ================================================== */
+
+function AvailableCourses() {
   const { token } = useAuth();
   const navigate = useNavigate();
 
@@ -532,7 +635,7 @@ function Courses() {
         setEnrollments(enrollmentsData);
       } catch {
         setError(
-          "Unable to load courses. Please try again."
+          "Unable to load available courses. Please try again."
         );
       } finally {
         setLoading(false);
@@ -544,10 +647,6 @@ function Courses() {
 
   const enrolledCourseIds = enrollments.map(
     (enrollment) => enrollment.course
-  );
-
-  const myCourses = courses.filter((course) =>
-    enrolledCourseIds.includes(course.id)
   );
 
   const availableCourses = courses.filter(
@@ -601,7 +700,7 @@ function Courses() {
     return (
       <main className="page-container">
         <div className="empty-state">
-          <h1>Courses</h1>
+          <h1>Available Courses</h1>
           <p>Loading courses...</p>
         </div>
       </main>
@@ -612,11 +711,11 @@ function Courses() {
     <main className="page-container">
       <section className="page-header">
         <div>
-          <h1>Courses</h1>
+          <h1>Available Courses</h1>
 
           <p>
-            View your courses and browse courses
-            available for enrolment.
+            Browse courses available for
+            enrolment.
           </p>
         </div>
       </section>
@@ -640,48 +739,6 @@ function Courses() {
       )}
 
       <section>
-        <h2>My Courses</h2>
-
-        {myCourses.length === 0 ? (
-          <div className="empty-state">
-            <p>
-              You are not currently enrolled in any
-              courses.
-            </p>
-          </div>
-        ) : (
-          <div className="course-grid">
-            {myCourses.map((course) => (
-              <article
-                className="course-card"
-                key={course.id}
-              >
-                <div className="course-card-content">
-                  <h3>{course.title}</h3>
-
-                  <p>{course.description}</p>
-
-                  <p className="course-teacher">
-                    <strong>Teacher ID:</strong>{" "}
-                    {course.teacher}
-                  </p>
-
-                  <button
-                    type="button"
-                    className="button button-primary"
-                  >
-                    View Course
-                  </button>
-                </div>
-              </article>
-            ))}
-          </div>
-        )}
-      </section>
-
-      <section>
-        <h2>Available Courses</h2>
-
         {availableCourses.length === 0 ? (
           <div className="empty-state">
             <p>
@@ -697,13 +754,13 @@ function Courses() {
                 key={course.id}
               >
                 <div className="course-card-content">
-                  <h3>{course.title}</h3>
+                  <h2>{course.title}</h2>
 
                   <p>{course.description}</p>
 
                   <p className="course-teacher">
-                    <strong>Teacher ID:</strong>{" "}
-                    {course.teacher}
+                    <strong>Teacher:</strong>{" "}
+                    {course.teacher_name}
                   </p>
 
                   <button
@@ -2297,7 +2354,18 @@ function App() {
           <ProtectedRoute
             allowedRoles={["student"]}
           >
-            <Courses />
+            <MyCourses />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/available-courses"
+        element={
+          <ProtectedRoute
+            allowedRoles={["student"]}
+          >
+            <AvailableCourses />
           </ProtectedRoute>
         }
       />

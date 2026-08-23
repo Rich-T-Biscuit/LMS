@@ -8,6 +8,7 @@ import {
 } from "react-router-dom";
 
 import { useAuth } from "./context/AuthContext";
+import { API_BASE_URL } from "./config/api";
 
 /* ==================================================
    Protected Route
@@ -441,9 +442,6 @@ function MyCourses() {
   const [enrollments, setEnrollments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-
-  const API_BASE_URL = "http://127.0.0.1:8000";
-
   useEffect(() => {
     const loadCourses = async () => {
       try {
@@ -504,7 +502,11 @@ function MyCourses() {
   if (loading) {
     return (
       <main className="page-container">
-        <div className="empty-state">
+        <div
+          className="empty-state"
+          role="status"
+          aria-live="polite"
+        >
           <h1>My Courses</h1>
           <p>Loading courses...</p>
         </div>
@@ -593,9 +595,6 @@ function AvailableCourses() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-
-  const API_BASE_URL = "http://127.0.0.1:8000";
-
   useEffect(() => {
     const loadCourses = async () => {
       try {
@@ -699,7 +698,11 @@ function AvailableCourses() {
   if (loading) {
     return (
       <main className="page-container">
-        <div className="empty-state">
+        <div
+          className="empty-state"
+          role="status"
+          aria-live="polite"
+        >
           <h1>Available Courses</h1>
           <p>Loading courses...</p>
         </div>
@@ -817,10 +820,6 @@ function TeacherCourses() {
     title: "",
     description: "",
   });
-
-  const API_BASE_URL =
-    "http://127.0.0.1:8000";
-
   useEffect(() => {
     const loadCourses = async () => {
       try {
@@ -1055,7 +1054,11 @@ function TeacherCourses() {
   if (loading) {
     return (
       <main className="page-container">
-        <div className="empty-state">
+        <div
+          className="empty-state"
+          role="status"
+          aria-live="polite"
+        >
           <h1>Course Details</h1>
           <p>Loading courses...</p>
         </div>
@@ -1197,10 +1200,8 @@ function TeacherCourses() {
                 <p>{course.description}</p>
 
                 <p>
-                  <strong>
-                    Teacher ID:
-                  </strong>{" "}
-                  {course.teacher}
+                  <strong>Teacher:</strong>{" "}
+                  {course.teacher_name || user.username}
                 </p>
               </div>
 
@@ -1272,10 +1273,6 @@ function AdminCourses() {
     description: "",
     teacher: "",
   });
-
-  const API_BASE_URL =
-    "http://127.0.0.1:8000";
-
   useEffect(() => {
     const loadAdminData = async () => {
       try {
@@ -1558,7 +1555,11 @@ function AdminCourses() {
   if (loading) {
     return (
       <main className="page-container">
-        <div className="empty-state">
+        <div
+          className="empty-state"
+          role="status"
+          aria-live="polite"
+        >
           <h1>Manage Courses</h1>
           <p>Loading courses...</p>
         </div>
@@ -1809,10 +1810,6 @@ function AdminUsers() {
   const [error, setError] = useState("");
   const [message, setMessage] =
     useState("");
-
-  const API_BASE_URL =
-    "http://127.0.0.1:8000";
-
   useEffect(() => {
     const loadUsers = async () => {
       try {
@@ -1997,7 +1994,11 @@ function AdminUsers() {
   if (loading) {
     return (
       <main className="page-container">
-        <div className="empty-state">
+        <div
+          className="empty-state"
+          role="status"
+          aria-live="polite"
+        >
           <h1>Manage Users</h1>
           <p>Loading users...</p>
         </div>
@@ -2298,6 +2299,9 @@ function ForgotPassword() {
    ================================================== */
 
 function NotFound() {
+  const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+
   return (
     <main className="page-container">
       <div className="empty-state">
@@ -2307,6 +2311,22 @@ function NotFound() {
           The page you are looking for does not
           exist.
         </p>
+
+        <button
+          type="button"
+          className="button button-primary"
+          onClick={() =>
+            navigate(
+              isAuthenticated
+                ? "/dashboard"
+                : "/login"
+            )
+          }
+        >
+          {isAuthenticated
+            ? "Back to Dashboard"
+            : "Back to Login"}
+        </button>
       </div>
     </main>
   );

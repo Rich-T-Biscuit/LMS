@@ -432,4 +432,18 @@ p {
   .login-card {
     margin-top: 2rem;
   }
+
+  .management-card-actions .button {
+    flex: 1 1 140px;
+  }
+
+  .page-navigation .button {
+    width: 100%;
+    max-width: 320px;
+  }
+
+  .create-course-container .button {
+    width: 100%;
+    max-width: 320px;
+  }
 }

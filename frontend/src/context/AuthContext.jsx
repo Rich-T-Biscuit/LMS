@@ -5,12 +5,11 @@ import {
   useState,
 } from "react";
 
+import { API_BASE_URL } from "../config/api";
+
 // Creates the authentication context used to share login
 // information throughout the application.
 const AuthContext = createContext(null);
-
-// Base URL for the Django backend API during local development.
-const API_BASE_URL = "http://127.0.0.1:8000";
 
 export function AuthProvider({ children }) {
   // Stores the currently logged-in user.

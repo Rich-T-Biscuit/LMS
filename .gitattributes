@@ -1,0 +1,19 @@
+# Normalise text files in the repository
+* text=auto
+
+# Python
+*.py text eol=lf
+
+# JavaScript / React
+*.js text eol=lf
+*.jsx text eol=lf
+
+# Web
+*.html text eol=lf
+*.css text eol=lf
+
+# Documentation and configuration
+*.md text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.json text eol=lf

@@ -9,6 +9,7 @@ from .models import User
 from .permissions import IsLMSAdmin
 from .serializers import UserSerializer
 
+
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
@@ -39,6 +40,7 @@ class CustomAuthToken(ObtainAuthToken):
                 },
             }
         )
+
 
 class LogoutView(APIView):
     permission_classes = [IsAuthenticated]

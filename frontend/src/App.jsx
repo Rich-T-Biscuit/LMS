@@ -236,7 +236,7 @@ function StudentDashboard() {
           >
             Browse Courses
           </button>
-        </article>        
+        </article>
       </section>
     </main>
   );
@@ -310,7 +310,7 @@ function TeacherDashboard() {
           >
             Course Details
           </button>
-        </article>      
+        </article>
       </section>
     </main>
   );

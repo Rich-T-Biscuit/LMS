@@ -27,6 +27,7 @@ class CoursePermission(permissions.BasePermission):
 
         return False
 
+
 class EnrollmentPermission(permissions.BasePermission):
     def has_permission(self, request, view):
         user = request.user

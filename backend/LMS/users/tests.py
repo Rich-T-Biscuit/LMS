@@ -35,7 +35,10 @@ class UserPermissionTests(APITestCase):
 
         self.assertIn(
             response.status_code,
-            [status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN],
+            [
+                status.HTTP_401_UNAUTHORIZED,
+                status.HTTP_403_FORBIDDEN,
+            ],
         )
 
     def test_student_cannot_access_users(self):
@@ -127,4 +130,114 @@ class UserPermissionTests(APITestCase):
             User.objects.filter(
                 id=disposable_user.id
             ).exists()
+        )
+
+
+class UserRegistrationTests(APITestCase):
+    def setUp(self):
+        self.register_url = reverse("api_register")
+
+    def test_user_can_register_as_student(self):
+        response = self.client.post(
+            self.register_url,
+            {
+                "username": "newstudent",
+                "email": "newstudent@example.com",
+                "password": "TestPassword123!",
+            },
+            format="json",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_201_CREATED,
+        )
+
+        user = User.objects.get(
+            username="newstudent"
+        )
+
+        self.assertEqual(
+            user.role,
+            User.Role.STUDENT,
+        )
+
+        self.assertEqual(
+            user.email,
+            "newstudent@example.com",
+        )
+
+    def test_registration_hashes_password(self):
+        self.client.post(
+            self.register_url,
+            {
+                "username": "passwordstudent",
+                "email": "password@example.com",
+                "password": "TestPassword123!",
+            },
+            format="json",
+        )
+
+        user = User.objects.get(
+            username="passwordstudent"
+        )
+
+        self.assertTrue(
+            user.check_password(
+                "TestPassword123!"
+            )
+        )
+
+        self.assertNotEqual(
+            user.password,
+            "TestPassword123!",
+        )
+
+    def test_duplicate_username_is_rejected(self):
+        User.objects.create_user(
+            username="existingstudent",
+            email="existing@example.com",
+            password="TestPassword123!",
+            role=User.Role.STUDENT,
+        )
+
+        response = self.client.post(
+            self.register_url,
+            {
+                "username": "existingstudent",
+                "email": "another@example.com",
+                "password": "TestPassword123!",
+            },
+            format="json",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_400_BAD_REQUEST,
+        )
+
+    def test_registration_cannot_set_admin_role(self):
+        response = self.client.post(
+            self.register_url,
+            {
+                "username": "newuser",
+                "email": "newuser@example.com",
+                "password": "TestPassword123!",
+                "role": User.Role.ADMIN,
+            },
+            format="json",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_201_CREATED,
+        )
+
+        user = User.objects.get(
+            username="newuser"
+        )
+
+        self.assertEqual(
+            user.role,
+            User.Role.STUDENT,
         )

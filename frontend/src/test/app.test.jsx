@@ -3,6 +3,8 @@ import {
   render,
   screen,
 } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+
 import {
   afterEach,
   describe,
@@ -183,6 +185,90 @@ describe("LMS routing and dashboards", () => {
           { name: "Manage Users" }
         )
       ).not.toBeInTheDocument();
+    }
+  );
+});
+
+describe("LMS registration", () => {
+  test(
+    "shows the registration page",
+    async () => {
+      renderApp("/register");
+
+      expect(
+        await screen.findByRole(
+          "heading",
+          { name: "Create Account" }
+        )
+      ).toBeInTheDocument();
+
+      expect(
+        screen.getByLabelText("Username")
+      ).toBeInTheDocument();
+
+      expect(
+        screen.getByLabelText("Email")
+      ).toBeInTheDocument();
+
+      expect(
+        screen.getByLabelText("Password")
+      ).toBeInTheDocument();
+
+      expect(
+        screen.getByLabelText(
+          "Confirm Password"
+        )
+      ).toBeInTheDocument();
+
+      expect(
+        screen.getByText(
+          "New accounts are created with Student access."
+        )
+      ).toBeInTheDocument();
+    }
+  );
+
+  test(
+    "rejects passwords that do not match",
+    async () => {
+      const user = userEvent.setup();
+
+      renderApp("/register");
+
+      await user.type(
+        screen.getByLabelText("Username"),
+        "newstudent"
+      );
+
+      await user.type(
+        screen.getByLabelText("Email"),
+        "newstudent@example.com"
+      );
+
+      await user.type(
+        screen.getByLabelText("Password"),
+        "TestPassword123!"
+      );
+
+      await user.type(
+        screen.getByLabelText(
+          "Confirm Password"
+        ),
+        "DifferentPassword123!"
+      );
+
+      await user.click(
+        screen.getByRole(
+          "button",
+          { name: "Create Account" }
+        )
+      );
+
+      expect(
+        await screen.findByRole("alert")
+      ).toHaveTextContent(
+        "Passwords do not match."
+      );
     }
   );
 });

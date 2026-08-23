@@ -136,15 +136,27 @@ const handleSubmit = async (event) => {
           </button>
         </form>
 
-        <button
-          type="button"
-          className="link-button"
-          onClick={() =>
-            navigate("/forgot-password")
-          }
-        >
-          Forgot password?
-        </button>
+        <div className="login-actions">
+          <button
+            type="button"
+            className="link-button"
+            onClick={() =>
+              navigate("/register")
+            }
+          >
+            Create an account
+          </button>
+
+          <button
+            type="button"
+            className="link-button"
+            onClick={() =>
+              navigate("/forgot-password")
+            }
+          >
+            Forgot password?
+          </button>
+        </div>
       </div>
     </main>
   );
@@ -2213,6 +2225,238 @@ function AdminUsers() {
 }
 
 /* ==================================================
+   Register
+   ================================================== */
+
+function Register() {
+  const navigate = useNavigate();
+
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [
+    confirmPassword,
+    setConfirmPassword,
+  ] = useState("");
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setError("");
+    setSuccess("");
+
+    if (
+      !username.trim() ||
+      !email.trim() ||
+      !password ||
+      !confirmPassword
+    ) {
+      setError("Please complete all fields.");
+      return;
+    }
+
+    if (password.length < 8) {
+      setError(
+        "Password must be at least 8 characters."
+      );
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/register/`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            username: username.trim(),
+            email: email.trim(),
+            password,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const data = await response.json();
+
+        if (data.username) {
+          setError(
+            "That username is already in use."
+          );
+        } else if (data.email) {
+          setError(
+            "Please enter a valid email address."
+          );
+        } else if (data.password) {
+          setError(
+            "Please choose a valid password."
+          );
+        } else {
+          setError(
+            "Unable to create the account."
+          );
+        }
+
+        return;
+      }
+
+      setUsername("");
+      setEmail("");
+      setPassword("");
+      setConfirmPassword("");
+
+      setSuccess(
+        "Account created successfully. " +
+          "You can now log in."
+      );
+    } catch {
+      setError(
+        "Unable to connect to the server. " +
+          "Please try again."
+      );
+    }
+  };
+
+  return (
+    <main className="page-container">
+      <div className="form-card login-card">
+        <h1>Learning Management System</h1>
+
+        <h2>Create Account</h2>
+
+        <p>
+          New accounts are created with
+          Student access.
+        </p>
+
+        {error && (
+          <div
+            className="alert alert-error"
+            role="alert"
+          >
+            {error}
+          </div>
+        )}
+
+        {success && (
+          <div
+            className="alert alert-success"
+            role="status"
+          >
+            {success}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label htmlFor="register-username">
+              Username
+            </label>
+
+            <input
+              type="text"
+              id="register-username"
+              name="username"
+              value={username}
+              onChange={(event) => {
+                setUsername(event.target.value);
+              }}
+              autoComplete="username"
+              required
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="register-email">
+              Email
+            </label>
+
+            <input
+              type="email"
+              id="register-email"
+              name="email"
+              value={email}
+              onChange={(event) => {
+                setEmail(event.target.value);
+              }}
+              autoComplete="email"
+              required
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="register-password">
+              Password
+            </label>
+
+            <input
+              type="password"
+              id="register-password"
+              name="password"
+              value={password}
+              onChange={(event) => {
+                setPassword(event.target.value);
+              }}
+              autoComplete="new-password"
+              minLength="8"
+              required
+            />
+          </div>
+
+          <div className="form-group">
+            <label
+              htmlFor="register-confirm-password"
+            >
+              Confirm Password
+            </label>
+
+            <input
+              type="password"
+              id="register-confirm-password"
+              name="confirmPassword"
+              value={confirmPassword}
+              onChange={(event) => {
+                setConfirmPassword(
+                  event.target.value
+                );
+              }}
+              autoComplete="new-password"
+              minLength="8"
+              required
+            />
+          </div>
+
+          <button
+            type="submit"
+            className="button button-primary"
+          >
+            Create Account
+          </button>
+        </form>
+
+        <button
+          type="button"
+          className="link-button"
+          onClick={() =>
+            navigate("/login")
+          }
+        >
+          Back to Login
+        </button>
+      </div>
+    </main>
+  );
+}
+
+/* ==================================================
    Forgot Password
    ================================================== */
 
@@ -2352,6 +2596,11 @@ function App() {
       <Route
         path="/login"
         element={<Login />}
+      />
+
+      <Route
+        path="/register"
+        element={<Register />}
       />
 
       <Route

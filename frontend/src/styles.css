@@ -125,6 +125,7 @@ p {
   color: #555;
 }
 
+
 /* ==================================================
    Forms
    ================================================== */
@@ -226,6 +227,18 @@ p {
 
 .link-button:hover {
   color: #1d4ed8;
+}
+
+.login-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.login-actions .link-button {
+  margin-top: 0;
 }
 
 

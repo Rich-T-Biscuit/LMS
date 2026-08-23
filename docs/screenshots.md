@@ -121,7 +121,7 @@ The Django backend was checked using Flake8. Initial formatting issues were iden
 ### Django System Check and Automated Tests
 The Django system check and automated backend test suite were run after the linting amendments.
 
-**Result:** Passed — no system-check issues and 17/17 automated tests passed.
+**Result:** Passed — no system-check issues and 21/21 automated tests passed.
 
 ![Django tests](screenshots/validation/django-tests.png)
 
@@ -129,7 +129,7 @@ The Django system check and automated backend test suite were run after the lint
 The React frontend was tested with Vitest and React Testing Library. ESLint and the Vite production build were then run as final frontend safety checks.
 
 **Results:**
-- Vitest / React Testing Library: 5/5 tests passed.
+- Vitest / React Testing Library: 7/7 tests passed.
 - ESLint: 0 errors and 1 non-blocking React Fast Refresh warning.
 - Vite production build: passed with 43 modules transformed.
 

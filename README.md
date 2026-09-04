@@ -20,12 +20,12 @@ The project was created to demonstrate full-stack web development skills includi
 
 The deployed application contains demonstration accounts for each LMS role:
 
-| Role | Username |
-| --- | --- |
-| Student | `student` |
-| Teacher | `teacher1` |
-| Teacher | `teacher2` |
-| Administrator | `admin` |
+| Role | Username | Password | 
+| --- | --- | --- |
+| Student | `student` | `E88Nd3ye75A9rcH` |
+| Teacher | `teacher1` | `fwnt5crSX7K8wEX` |
+| Teacher | `teacher2` | `Rq66dQmjgbEnFe5` |
+| Administrator | `admin` | `Zyi2sKMDXp67fuz` |
 
 Demo credentials can be supplied separately when required.
 
